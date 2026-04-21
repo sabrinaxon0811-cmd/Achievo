@@ -839,7 +839,7 @@ export default function App() {
                     Welcome, <span className="text-cherry">{profile.name.split(' ')[0]}</span>. 👋
                   </motion.h2>
                   <p className="text-xl text-slate-500 max-w-2xl">
-                    We've found <span className="text-cherry font-semibold">7 new opportunities</span> matching your interests.
+                    We've found <span className="text-cherry font-semibold">{MOCK_OPPORTUNITIES.length} new opportunities</span> matching your interests.
                   </p>
                 </header>
               )}
@@ -853,22 +853,46 @@ export default function App() {
                       <Brain size={20} />
                       <span>AI Recommendation Engine</span>
                     </div>
-                    <h3 className="text-4xl font-bold text-slate-900">Your profile match score improved by 18%</h3>
-                    <p className="text-lg text-slate-500">By adding your recent biology project, you've unlocked access to 3 elite research grants.</p>
-                    <button 
-                      onClick={() => setActiveTab('opportunities')}
-                      className="bg-cherry text-white px-8 py-4 rounded-full font-bold text-lg flex items-center gap-2 hover:bg-cherry-hover transition-all shadow-xl shadow-cherry/20"
-                    >
-                      Explore Matches <ArrowRight size={20} />
-                    </button>
+                    {profile.aiStrengthScore === 0 ? (
+                      <>
+                        <h3 className="text-4xl font-bold text-slate-900">Ready to find your perfect match?</h3>
+                        <p className="text-lg text-slate-500">Complete your portfolio checklist to allow our AI to analyze your strengths and match you with elite scholarships.</p>
+                        <button 
+                          onClick={() => setActiveTab('portfolio')}
+                          className="bg-cherry text-white px-8 py-4 rounded-full font-bold text-lg flex items-center gap-2 hover:bg-cherry-hover transition-all shadow-xl shadow-cherry/20"
+                        >
+                          Complete Portfolio <ArrowRight size={20} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="text-4xl font-bold text-slate-900">Your profile match score is {profile.aiStrengthScore}%</h3>
+                        <p className="text-lg text-slate-500">We've identified several elite opportunities where your profile stands out as a top contender.</p>
+                        <button 
+                          onClick={() => setActiveTab('opportunities')}
+                          className="bg-cherry text-white px-8 py-4 rounded-full font-bold text-lg flex items-center gap-2 hover:bg-cherry-hover transition-all shadow-xl shadow-cherry/20"
+                        >
+                          Explore Matches <ArrowRight size={20} />
+                        </button>
+                      </>
+                    )}
                   </div>
                   <div className="w-full md:w-1/3 grid grid-cols-2 gap-4">
-                    {[98, 92, 85, 78].map((score, i) => (
-                      <div key={i} className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col items-center justify-center">
-                        <span className="text-3xl font-bold text-cherry">{score}%</span>
-                        <span className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Match</span>
-                      </div>
-                    ))}
+                    {profile.aiStrengthScore === 0 ? (
+                      [0, 0, 0, 0].map((_, i) => (
+                        <div key={i} className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col items-center justify-center">
+                          <span className="text-3xl font-bold text-slate-300">--%</span>
+                          <span className="text-xs text-slate-300 uppercase font-bold tracking-tighter">Pending</span>
+                        </div>
+                      ))
+                    ) : (
+                      [profile.aiStrengthScore + 2, profile.aiStrengthScore - 3, profile.aiStrengthScore + 5, profile.aiStrengthScore - 1].map((score, i) => (
+                        <div key={i} className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col items-center justify-center">
+                          <span className="text-3xl font-bold text-cherry">{Math.min(100, Math.max(0, score))}%</span>
+                          <span className="text-xs text-slate-400 uppercase font-bold tracking-tighter">Match</span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
