@@ -358,14 +358,14 @@ export default function App() {
   });
   
   const [profile, setProfile] = useState<UserProfile>({
-    name: "Sabrina",
-    grade: "Grade 11",
-    country: "Uzbekistan",
-    destination: "United States",
-    interests: ["Biology", "Technology", "STEM"],
-    languages: ["English", "Uzbek", "Russian"],
+    name: "Guest User",
+    grade: "N/A",
+    country: "World",
+    destination: "Global",
+    interests: [],
+    languages: [],
     role: 'user',
-    aiStrengthScore: 84
+    aiStrengthScore: 0
   });
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -418,6 +418,16 @@ export default function App() {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (!user) {
+        setProfile({
+          name: "Guest User",
+          grade: "N/A",
+          country: "World",
+          destination: "Global",
+          interests: [],
+          languages: [],
+          role: 'user',
+          aiStrengthScore: 0
+        });
         setIsAuthReady(true);
         return;
       }
@@ -456,18 +466,16 @@ export default function App() {
       const unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          console.log("Current User Profile Sync:", data); // Debug log
-          setProfile(prev => ({ 
-            ...prev, 
-            name: data.name || prev.name,
+          setProfile({
+            name: data.name || 'Anonymous',
             role: data.role || 'user',
-            aiStrengthScore: data.aiStrengthScore || prev.aiStrengthScore,
-            grade: data.grade || prev.grade,
-            country: data.country || prev.country,
-            destination: data.destination || prev.destination,
-            interests: data.interests || prev.interests,
-            languages: data.languages || prev.languages
-          }));
+            aiStrengthScore: data.aiStrengthScore || 0,
+            grade: data.grade || 'N/A',
+            country: data.country || 'N/A',
+            destination: data.destination || 'N/A',
+            interests: data.interests || [],
+            languages: data.languages || []
+          });
         }
         setIsAuthReady(true);
       }, (error) => {
@@ -670,6 +678,109 @@ export default function App() {
   };
 
   const stats = calculateStats();
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-cherry border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium font-display uppercase tracking-widest text-xs">Loading Achievo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 selection:bg-cherry/10">
+        <nav className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <Logo className="h-10 w-auto" />
+          <button 
+            onClick={handleLogin}
+            className="bg-white border border-slate-200 text-slate-900 px-6 py-2.5 rounded-2xl font-bold hover:bg-slate-50 transition-all flex items-center gap-2"
+          >
+            <LogIn size={18} /> Partner Login
+          </button>
+        </nav>
+
+        <main className="max-w-7xl mx-auto px-6 py-20 lg:py-32 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="space-y-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cherry/5 text-cherry font-bold text-sm tracking-tight border border-cherry/10">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cherry opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cherry"></span>
+              </span>
+              Registration for 2026 Season is Open
+            </div>
+            <h1 className="text-7xl lg:text-8xl font-display font-bold text-slate-900 leading-[0.9] tracking-tight">
+              Unlock Your <br /> Future <span className="text-cherry italic">Achievo</span>.
+            </h1>
+            <p className="text-xl text-slate-500 max-w-xl leading-relaxed">
+              The premium platform for ambitious students. Analyze your profile with AI, track elite opportunities, and build a winning portfolio for global recognition.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button 
+                onClick={handleLogin}
+                className="bg-cherry text-white px-10 py-5 rounded-3xl font-bold text-lg hover:bg-cherry-hover transition-all shadow-2xl shadow-cherry/20 flex items-center justify-center gap-3"
+              >
+                Get Started with Google <ArrowRight size={20} />
+              </button>
+              <div className="flex items-center gap-4 px-4">
+                <div className="flex -space-x-3">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-slate-200 overflow-hidden">
+                      <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" referrerPolicy="no-referrer" />
+                    </div>
+                  ))}
+                </div>
+                <div className="text-sm font-medium text-slate-400">
+                  Join <span className="text-slate-900 font-bold">12k+</span> students
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-gradient-to-tr from-cherry to-orange-500 rounded-[3rem] opacity-20 blur-3xl group-hover:opacity-30 transition-opacity"></div>
+            <div className="relative bg-white border border-slate-200 rounded-[3rem] p-8 shadow-2xl lg:rotate-3 group-hover:rotate-0 transition-transform duration-500">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-cherry rounded-2xl flex items-center justify-center text-white">
+                      <Trophy size={24} />
+                    </div>
+                    <div>
+                      <div className="font-bold">Columbia University</div>
+                      <div className="text-xs text-slate-400">Biological Sciences Grant</div>
+                    </div>
+                  </div>
+                  <div className="text-cherry font-bold text-sm bg-cherry/5 px-3 py-1 rounded-full">
+                    98% Match
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full w-[98%] bg-cherry rounded-full animate-pulse"></div>
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                    <span>Weak Profile</span>
+                    <span>Superior Profile</span>
+                  </div>
+                </div>
+                <div className="p-4 rounded-3xl bg-slate-50 border border-slate-100 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                    <Brain size={14} className="text-cherry" /> AI SUGGESTION
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    Adding your "Regional Biology Olympiad" certificate would increase your admission probability by <span className="text-cherry font-bold">12.4%</span>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
