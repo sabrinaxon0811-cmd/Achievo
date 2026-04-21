@@ -444,24 +444,18 @@ export default function App() {
           name: user.displayName || 'Anonymous',
           email: user.email,
           role: initialRole,
-          aiStrengthScore: 84
+          aiStrengthScore: 0
         });
       } else {
-        // Update name/email if missing or changed
         const data = userDoc.data();
-        if (data && (data.name !== user.displayName || data.email !== user.email)) {
-          await updateDoc(userRef, {
-            name: user.displayName || data.name || 'Anonymous',
-            email: user.email || data.email
-          });
-        }
-        
-        if (isOwnerEmail && data?.role !== 'owner') {
-          // Auto-upgrade to owner if email matches but role is different
+        if (isOwnerEmail && data.role !== 'owner') {
           await updateDoc(userRef, { role: 'owner' });
         }
+        // Reset legacy hardcoded score
+        if (data.aiStrengthScore === 84) {
+          await updateDoc(userRef, { aiStrengthScore: 0 });
+        }
       }
-
       // Real-time listener for profile changes
       const unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -549,6 +543,15 @@ export default function App() {
       await updateDoc(doc(db, 'feedback', id), { status });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `feedback/${id}`);
+    }
+  };
+
+  const deleteFeedback = async (id: string) => {
+    // Note: window.confirm might fail in iframes
+    try {
+      await deleteDoc(doc(db, 'feedback', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `feedback/${id}`);
     }
   };
 
@@ -669,11 +672,15 @@ export default function App() {
     const total = approved.length || 1;
     const usefulCount = approved.filter(f => f.rating >= 7).length;
     const acceptedCount = approved.filter(f => f.acceptedUniversities.length > 0).length;
+    const avgAiStrength = approved.length > 0 
+      ? Math.round(approved.reduce((acc, f) => acc + (f.aiStrengthScore || 0), 0) / approved.length)
+      : 0;
     
     return {
       usefulPercentage: Math.round((usefulCount / total) * 100),
       acceptedPercentage: Math.round((acceptedCount / total) * 100),
-      totalUsers: approved.length
+      totalUsers: approved.length,
+      avgAiStrength
     };
   };
 
@@ -690,97 +697,32 @@ export default function App() {
     );
   }
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-slate-50 selection:bg-cherry/10">
-        <nav className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Logo className="h-10 w-auto" />
+  const ProtectedTab = ({ children }: { children: React.ReactNode }) => {
+    if (!currentUser) {
+      return (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center py-20 text-center space-y-8"
+        >
+          <div className="w-24 h-24 bg-cherry/10 text-cherry rounded-[2rem] flex items-center justify-center">
+            <ShieldCheck size={48} />
+          </div>
+          <div className="space-y-4 max-w-md">
+            <h2 className="text-4xl font-display font-bold text-slate-900">Protected Area</h2>
+            <p className="text-lg text-slate-500">Log in to unlock your personalized analysis, build your portfolio, and share feedback with the community.</p>
+          </div>
           <button 
             onClick={handleLogin}
-            className="bg-white border border-slate-200 text-slate-900 px-6 py-2.5 rounded-2xl font-bold hover:bg-slate-50 transition-all flex items-center gap-2"
+            className="bg-cherry text-white px-10 py-5 rounded-3xl font-bold text-lg hover:bg-cherry-hover transition-all shadow-2xl shadow-cherry/20 flex items-center gap-3"
           >
-            <LogIn size={18} /> Partner Login
+            Log In to Continue <ArrowRight size={20} />
           </button>
-        </nav>
-
-        <main className="max-w-7xl mx-auto px-6 py-20 lg:py-32 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cherry/5 text-cherry font-bold text-sm tracking-tight border border-cherry/10">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cherry opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-cherry"></span>
-              </span>
-              Registration for 2026 Season is Open
-            </div>
-            <h1 className="text-7xl lg:text-8xl font-display font-bold text-slate-900 leading-[0.9] tracking-tight">
-              Unlock Your <br /> Future <span className="text-cherry italic">Achievo</span>.
-            </h1>
-            <p className="text-xl text-slate-500 max-w-xl leading-relaxed">
-              The premium platform for ambitious students. Analyze your profile with AI, track elite opportunities, and build a winning portfolio for global recognition.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button 
-                onClick={handleLogin}
-                className="bg-cherry text-white px-10 py-5 rounded-3xl font-bold text-lg hover:bg-cherry-hover transition-all shadow-2xl shadow-cherry/20 flex items-center justify-center gap-3"
-              >
-                Get Started with Google <ArrowRight size={20} />
-              </button>
-              <div className="flex items-center gap-4 px-4">
-                <div className="flex -space-x-3">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-slate-200 overflow-hidden">
-                      <img src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="User" referrerPolicy="no-referrer" />
-                    </div>
-                  ))}
-                </div>
-                <div className="text-sm font-medium text-slate-400">
-                  Join <span className="text-slate-900 font-bold">12k+</span> students
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="relative group">
-            <div className="absolute -inset-4 bg-gradient-to-tr from-cherry to-orange-500 rounded-[3rem] opacity-20 blur-3xl group-hover:opacity-30 transition-opacity"></div>
-            <div className="relative bg-white border border-slate-200 rounded-[3rem] p-8 shadow-2xl lg:rotate-3 group-hover:rotate-0 transition-transform duration-500">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-cherry rounded-2xl flex items-center justify-center text-white">
-                      <Trophy size={24} />
-                    </div>
-                    <div>
-                      <div className="font-bold">Columbia University</div>
-                      <div className="text-xs text-slate-400">Biological Sciences Grant</div>
-                    </div>
-                  </div>
-                  <div className="text-cherry font-bold text-sm bg-cherry/5 px-3 py-1 rounded-full">
-                    98% Match
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full w-[98%] bg-cherry rounded-full animate-pulse"></div>
-                  </div>
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
-                    <span>Weak Profile</span>
-                    <span>Superior Profile</span>
-                  </div>
-                </div>
-                <div className="p-4 rounded-3xl bg-slate-50 border border-slate-100 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                    <Brain size={14} className="text-cherry" /> AI SUGGESTION
-                  </div>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    Adding your "Regional Biology Olympiad" certificate would increase your admission probability by <span className="text-cherry font-bold">12.4%</span>.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+        </motion.div>
+      );
+    }
+    return <>{children}</>;
+  };
 
   return (
     <ErrorBoundary>
@@ -833,18 +775,74 @@ export default function App() {
               exit={{ opacity: 0, x: 20 }}
               className="space-y-12"
             >
-              <header className="space-y-4">
-                <motion.h2 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-6xl font-display font-bold text-slate-900 leading-tight"
-                >
-                  Welcome to <span className="text-cherry">Achievo</span>. 👋
-                </motion.h2>
-                <p className="text-xl text-slate-500 max-w-2xl">
-                  We've analyzed your profile and found <span className="text-cherry font-semibold">7 new opportunities</span> that match your interests in {profile.interests.join(', ')}.
-                </p>
-              </header>
+              {/* Hero for Guests / Welcome for Users */}
+              {!currentUser ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-10 md:py-16">
+                  <div className="space-y-8">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cherry/5 text-cherry font-bold text-sm tracking-tight border border-cherry/10">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cherry opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-cherry"></span>
+                      </span>
+                      Join 12,000+ Students Today
+                    </div>
+                    <h1 className="text-6xl lg:text-7xl font-display font-bold text-slate-900 leading-[1] tracking-tight">
+                      Experience <br /> <span className="text-cherry italic">Achievo</span>.
+                    </h1>
+                    <p className="text-lg text-slate-500 max-w-xl leading-relaxed">
+                      Analyze your profile with AI, track elite opportunities, and build a winning portfolio for global recognition.
+                    </p>
+                    <button 
+                      onClick={handleLogin}
+                      className="bg-cherry text-white px-10 py-5 rounded-3xl font-bold text-lg hover:bg-cherry-hover transition-all shadow-2xl shadow-cherry/20 flex items-center justify-center gap-3"
+                    >
+                      Sign Up with Google <ArrowRight size={20} />
+                    </button>
+                  </div>
+                  <div className="relative group hidden lg:block">
+                    <div className="absolute -inset-4 bg-gradient-to-tr from-cherry to-orange-500 rounded-[3rem] opacity-20 blur-3xl group-hover:opacity-30 transition-opacity"></div>
+                    <div className="relative bg-white border border-slate-200 rounded-[3rem] p-8 shadow-2xl">
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-cherry rounded-2xl flex items-center justify-center text-white">
+                              <Trophy size={24} />
+                            </div>
+                            <div>
+                              <div className="font-bold">Cambridge University</div>
+                              <div className="text-xs text-slate-400">ISA Scholarship 2026</div>
+                            </div>
+                          </div>
+                          <div className="text-cherry font-bold text-sm bg-cherry/5 px-3 py-1 rounded-full">
+                            96% Match
+                          </div>
+                        </div>
+                        <div className="p-4 rounded-3xl bg-slate-50 border border-slate-100 space-y-3">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                            <Brain size={14} className="text-cherry" /> AI SUGGESTION
+                          </div>
+                          <p className="text-sm text-slate-600 leading-relaxed">
+                            Complete your profile to unlock <span className="text-cherry font-bold">2 more</span> elite grants.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <header className="space-y-4">
+                  <motion.h2 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-6xl font-display font-bold text-slate-900 leading-tight"
+                  >
+                    Welcome, <span className="text-cherry">{profile.name.split(' ')[0]}</span>. 👋
+                  </motion.h2>
+                  <p className="text-xl text-slate-500 max-w-2xl">
+                    We've found <span className="text-cherry font-semibold">7 new opportunities</span> matching your interests.
+                  </p>
+                </header>
+              )}
 
               {/* AI Banner */}
               <div className="relative overflow-hidden bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-12 shadow-sm">
@@ -1020,7 +1018,7 @@ export default function App() {
                   <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Brain size={24} />
                   </div>
-                  <div className="text-5xl font-bold text-slate-900">84</div>
+                  <div className="text-5xl font-bold text-slate-900">{stats.avgAiStrength}</div>
                   <p className="text-slate-500 font-medium">Avg. AI Strength</p>
                 </div>
                 <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm text-center space-y-2">
@@ -1043,10 +1041,11 @@ export default function App() {
                       animate={{ opacity: 1, scale: 1 }}
                       className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative"
                     >
-                      {profile.role !== 'user' && (
+                      {(profile.role === 'admin' || profile.role === 'owner') && (
                         <div className="absolute top-4 right-4 flex gap-2">
-                          <button onClick={() => updateFeedbackStatus(item.id, 'approved')} className="p-1 text-green-600 hover:bg-green-50 rounded"><ShieldCheck size={16}/></button>
-                          <button onClick={() => updateFeedbackStatus(item.id, 'hidden')} className="p-1 text-red-600 hover:bg-red-50 rounded"><X size={16}/></button>
+                          <button onClick={() => updateFeedbackStatus(item.id, 'approved')} title="Approve" className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"><ShieldCheck size={16}/></button>
+                          <button onClick={() => updateFeedbackStatus(item.id, 'hidden')} title="Hide" className="p-1 text-slate-400 hover:bg-slate-50 rounded transition-colors"><X size={16}/></button>
+                          <button onClick={() => deleteFeedback(item.id)} title="Delete Permanently" className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={16}/></button>
                         </div>
                       )}
                       <div className="flex items-center gap-3 mb-4">
@@ -1161,6 +1160,7 @@ export default function App() {
           )}
 
           {activeTab === 'admin' && profile.role !== 'user' && (
+          <ProtectedTab>
             <motion.div 
               key="admin"
               initial={{ opacity: 0, x: -20 }}
@@ -1318,13 +1318,52 @@ export default function App() {
                     )}
                   </div>
                 </div>
+
+                {/* Feedback Management */}
+                <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm space-y-6 lg:col-span-2">
+                  <h3 className="text-2xl font-bold flex items-center gap-2">
+                    <MessageSquare className="text-cherry" /> Feedback Moderation
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2">
+                    {feedbacks.length === 0 ? (
+                      <p className="text-slate-400 italic">No feedbacks found.</p>
+                    ) : (
+                      feedbacks.map(item => (
+                        <div key={item.id} className={`p-5 rounded-2xl border transition-all ${item.status === 'pending' ? 'bg-orange-50/50 border-orange-100' : item.status === 'hidden' ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100'}`}>
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-slate-900 truncate">{item.userName}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.status}</p>
+                            </div>
+                            <div className="flex gap-1 ml-2">
+                              {item.status !== 'approved' && (
+                                <button onClick={() => updateFeedbackStatus(item.id, 'approved')} className="p-1.5 text-green-600 hover:bg-green-100 rounded-lg" title="Approve"><ShieldCheck size={14}/></button>
+                              )}
+                              {item.status !== 'hidden' && (
+                                <button onClick={() => updateFeedbackStatus(item.id, 'hidden')} className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg" title="Hide"><X size={14}/></button>
+                              )}
+                              <button onClick={() => deleteFeedback(item.id)} className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg" title="Delete"><Trash2 size={14}/></button>
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-600 line-clamp-2 italic mb-2">"{item.comment}"</p>
+                          <div className="flex items-center gap-1">
+                            {[...Array(10)].map((_, i) => (
+                              <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < item.rating ? 'bg-cherry' : 'bg-slate-200'}`} />
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </motion.div>
-          )}
+          </ProtectedTab>
+        )}
 
-          {activeTab === 'portfolio' && (
-            <motion.div 
-              key="portfolio"
+        {activeTab === 'portfolio' && (
+          <motion.div 
+            key="portfolio"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
@@ -1344,18 +1383,29 @@ export default function App() {
                     </h3>
                     <div className="space-y-4">
                       {[
-                        { label: "Academic Transcripts", status: "complete" },
+                        { label: "Academic Transcripts", status: "pending" },
                         { label: "Personal Statement (Draft)", status: "pending" },
                         { label: "Letters of Recommendation", status: "pending" },
-                        { label: "Extracurricular Activities", status: "complete" },
-                        { label: "Standardized Test Scores", status: "complete" }
+                        { label: "Extracurricular Activities", status: "pending" },
+                        { label: "Standardized Test Scores", status: "pending" }
                       ].map((item, i) => (
                         <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
                           <span className="font-medium text-slate-700">{item.label}</span>
                           {item.status === 'complete' ? (
                             <span className="text-green-600 bg-green-50 px-3 py-1 rounded-full text-xs font-bold uppercase">Complete</span>
                           ) : (
-                            <button className="text-cherry hover:underline text-sm font-bold">Upload Now</button>
+                            <button 
+                              onClick={() => {
+                                if (!currentUser) handleLogin();
+                                else {
+                                  // Logic for upload
+                                  alert('Upload feature coming soon for verified accounts!');
+                                }
+                              }}
+                              className="text-cherry hover:underline text-sm font-bold"
+                            >
+                              Upload Now
+                            </button>
                           )}
                         </div>
                       ))}
@@ -1367,8 +1417,18 @@ export default function App() {
                   <div className="bg-cherry text-white rounded-[2rem] p-8 shadow-xl shadow-cherry/20">
                     <h3 className="text-2xl font-bold mb-4">AI Strength Score</h3>
                     <div className="text-6xl font-bold mb-4">{profile.aiStrengthScore}<span className="text-2xl opacity-50">/100</span></div>
-                    <p className="text-cherry-light/80 mb-6">Your profile is stronger than 92% of applicants in your region.</p>
-                    <button className="w-full bg-white text-cherry py-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors">
+                    <p className="text-cherry-light/80 mb-6 font-medium">
+                      {profile.aiStrengthScore > 0 
+                        ? `Your profile is stronger than ${Math.floor(profile.aiStrengthScore * 1.1)}% of applicants in your region.`
+                        : "Complete your checklist to calculate your competitive advantage."}
+                    </p>
+                    <button 
+                      onClick={() => {
+                        if (!currentUser) handleLogin();
+                        else alert('Our AI is analyzing your specific profile improvements...');
+                      }}
+                      className="w-full bg-white text-cherry py-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors"
+                    >
                       Get Improvement Tips
                     </button>
                   </div>
@@ -1481,9 +1541,12 @@ export default function App() {
                     </div>
 
                     <div className="pt-8 border-t border-slate-100 flex justify-between items-center">
-                      <p className="text-slate-400 text-sm">Last updated: April 15, 2026</p>
+                      <p className="text-slate-400 text-sm italic">Join Achievo to unlock full editing.</p>
                       <button 
-                        onClick={() => setIsEditingProfile(true)}
+                        onClick={() => {
+                          if (!currentUser) handleLogin();
+                          else setIsEditingProfile(true);
+                        }}
                         className="flex items-center gap-2 text-cherry font-bold hover:underline"
                       >
                         <Pencil size={18} /> Edit Profile
@@ -1494,7 +1557,7 @@ export default function App() {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+      </AnimatePresence>
       </main>
 
       {/* Opportunity Detail Modal */}
@@ -1557,15 +1620,28 @@ export default function App() {
                 </div>
 
                 <div className="flex gap-4 pt-4">
-                  <a 
-                    href={selectedOpp.link.startsWith('http') ? selectedOpp.link : `https://${selectedOpp.link}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
+                  <button 
+                    onClick={() => {
+                      if (!currentUser) handleLogin();
+                      else {
+                        const link = selectedOpp.link.startsWith('http') ? selectedOpp.link : `https://${selectedOpp.link}`;
+                        window.open(link, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
                     className="flex-1 bg-cherry text-white py-4 rounded-2xl font-bold hover:bg-cherry-hover transition-all shadow-lg shadow-cherry/20 flex items-center justify-center gap-2"
                   >
                     Apply Now <ExternalLink size={18} />
-                  </a>
-                  <button className="px-8 py-4 border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all">
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (!currentUser) handleLogin();
+                      else {
+                        // Logic for saving
+                        alert('Opportunity saved to your profile!');
+                      }
+                    }}
+                    className="px-8 py-4 border border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                  >
                     Save for Later
                   </button>
                 </div>

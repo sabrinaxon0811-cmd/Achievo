@@ -43,9 +43,11 @@ service cloud.firestore {
     
     function isAdmin() {
       return isAuthenticated() && 
-        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'owner']) ||
-         (request.auth.token.email == "sabrinaxon.0811@gmail.com" && request.auth.token.email_verified == true));
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'owner']) ||
+          request.auth.token.email == "sabrinaxon.0811@gmail.com"
+        );
     }
 
     function isValidFeedback(data) {
