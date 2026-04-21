@@ -1524,6 +1524,32 @@ export default function App() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:border-cherry"
                         />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Languages (comma separated)</label>
+                        <input 
+                          type="text" 
+                          value={editProfileForm.languages.join(', ')}
+                          onChange={(e) => setEditProfileForm({
+                            ...editProfileForm, 
+                            languages: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '')
+                          })}
+                          placeholder="e.g. English, Uzbek, Russian"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:border-cherry"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Academic Interests (comma separated)</label>
+                        <input 
+                          type="text" 
+                          value={editProfileForm.interests.join(', ')}
+                          onChange={(e) => setEditProfileForm({
+                            ...editProfileForm, 
+                            interests: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '')
+                          })}
+                          placeholder="e.g. Computer Science, AI, Business, Biology"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:border-cherry"
+                        />
+                      </div>
                     </div>
                     <div className="flex gap-4">
                       <button 
