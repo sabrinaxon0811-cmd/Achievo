@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback and rankings for the site.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The UID of the user who provided the feedback." },
+        "userName": { "type": "string", "description": "The name of the user." },
+        "rating": { "type": "number", "description": "The rating from 0 to 10." },
+        "comment": { "type": "string", "description": "The feedback comment." },
+        "acceptedUniversities": { "type": "array", "description": "List of universities the user got accepted to." },
+        "aiStrengthScore": { "type": "number", "description": "The AI strength score at the time of feedback." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the feedback was created." },
+        "status": { "type": "string", "enum": ["pending", "approved", "hidden"], "description": "Status for admin management." }
+      },
+      "required": ["uid", "userName", "rating", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Extended user profile data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin", "owner"] },
+        "aiStrengthScore": { "type": "number" }
+      }
+    },
+    "Opportunity": {
+      "title": "Opportunity",
+      "description": "Scholarships, competitions, and programs.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "deadline": { "type": "string" },
+        "eligibility": { "type": "string" },
+        "description": { "type": "string" },
+        "link": { "type": "string" },
+        "tags": { "type": "array" },
+        "matchScore": { "type": "number" }
+      },
+      "required": ["title", "category", "deadline"]
+    }
+  },
+  "firestore": {
+    "/feedback/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Collection of user feedback."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile and roles."
+    },
+    "/opportunities/{opportunityId}": {
+      "schema": "Opportunity",
+      "description": "Collection of opportunities."
+    }
+  }
+}

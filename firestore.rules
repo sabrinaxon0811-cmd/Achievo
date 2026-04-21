@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - name: string (optional)
+    //   - email: string (optional)
+    //   - role: string (required, ['user', 'admin', 'owner'])
+    //   - aiStrengthScore: number (optional)
+    //
+    // Collection: feedback
+    // Document ID: auto-generated
+    // Fields:
+    //   - uid: string (required)
+    //   - userName: string (required)
+    //   - rating: number (required, 0-10)
+    //   - comment: string (optional)
+    //   - acceptedUniversities: list (optional)
+    //   - aiStrengthScore: number (optional)
+    //   - createdAt: timestamp (required)
+    //   - status: string (required, ['pending', 'approved', 'hidden'])
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'owner']) ||
+         (request.auth.token.email == "sabrinaxon.0811@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidFeedback(data) {
+      return data.uid == request.auth.uid &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() < 100 &&
+             data.rating is number && data.rating >= 0 && data.rating <= 10 &&
+             (!('comment' in data) || (data.comment is string && data.comment.size() < 1000)) &&
+             (!('acceptedUniversities' in data) || (data.acceptedUniversities is list && data.acceptedUniversities.size() < 20)) &&
+             data.status == 'pending';
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Allow public read for feedback and opportunities
+    match /feedback/{document=**} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    match /opportunities/{document=**} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+    }
+  }
+}
